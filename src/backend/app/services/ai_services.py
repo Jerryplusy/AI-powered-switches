@@ -1,61 +1,59 @@
-# 调用api
-import requests
-import json
-from ...config import Config
-from ...exceptions import AIServiceError
+import aiohttp
+import logging
+from typing import Dict, Any
+from ...config import settings
+
+logger = logging.getLogger(__name__)
 
 
-def get_network_config(command: str) -> list:
-    """调用AI服务生成配置"""
+async def call_ai_api(command: str, device_type: str, vendor: str, api_key: str) -> Dict[str, Any]:
+    """
+    调用硅基流动API解析中文命令
+
+    参数:
+    - command: 中文配置命令
+    - device_type: 设备类型
+    - vendor: 设备厂商
+    - api_key: API密钥
+
+    返回:
+    - 解析后的配置和状态信息
+    """
+    url = settings.ai_api_url
+
     headers = {
-        "Authorization": f"Bearer {Config.AI_API_KEY}",
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json"
     }
 
     payload = {
         "command": command,
-        "vendor": "cisco",
-        "strict_mode": True
+        "device_type": device_type,
+        "vendor": vendor,
+        "output_format": "json"
     }
 
     try:
-        response = requests.post(
-            Config.AI_API_ENDPOINT,
-            headers=headers,
-            json=payload,
-            timeout=8
-        )
-        response.raise_for_status()
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, json=payload, headers=headers) as response:
+                if response.status != 200:
+                    error = await response.text()
+                    logger.error(f"AI API error: {error}")
+                    return {
+                        "success": False,
+                        "message": f"AI API returned {response.status}: {error}"
+                    }
 
-        result = response.json()
-        if not result.get('success'):
-            raise AIServiceError(result.get('message', 'AI服务返回错误'))
+                data = await response.json()
+                return {
+                    "success": True,
+                    "config": data.get("config", {}),
+                    "message": data.get("message", "Command parsed successfully")
+                }
 
-        return result['config']
-
-    except requests.exceptions.Timeout:
-        raise AIServiceError("AI服务响应超时")
-    except requests.exceptions.RequestException as e:
-        raise AIServiceError(f"API请求失败: {str(e)}")
-
-
-# --------------- backend/config.py ---------------
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
-
-
-class Config:
-    # 应用配置
-    ENV = os.getenv("FLASK_ENV", "production")
-    SECRET_KEY = os.getenv("SECRET_KEY", "supersecretkey")
-
-    # AI服务配置
-    AI_API_KEY = os.getenv("AI_API_KEY", "")
-    AI_API_ENDPOINT = os.getenv("AI_API_ENDPOINT", "https://api.siliconflow.ai/v1/network")
-
-    # 网络设备配置
-    SWITCH_USERNAME = os.getenv("SWITCH_USER", "admin")
-    SWITCH_PASSWORD = os.getenv("SWITCH_PASS", "Cisco123!")
-    DEFAULT_DEVICE_IP = os.getenv("DEFAULT_DEVICE_IP", "192.168.1.1")
+    except Exception as e:
+        logger.error(f"Error calling AI API: {str(e)}")
+        return {
+            "success": False,
+            "message": f"Error calling AI API: {str(e)}"
+        }

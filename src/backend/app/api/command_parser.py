@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
-from ...config import settings
-from ..services.ai_service import call_ai_api
+from src.backend.config import settings
+from src.backend.app.services.ai_service import call_ai_api
 import logging
 
 router = APIRouter()

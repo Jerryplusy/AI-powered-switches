@@ -1,7 +1,7 @@
 import aiohttp
 import logging
 from typing import Dict, Any
-from ...config import settings
+from src.backend.config import settings
 
 logger = logging.getLogger(__name__)
 

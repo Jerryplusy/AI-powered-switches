@@ -1,6 +1,8 @@
 fastapi==0.109.1
 uvicorn==0.27.0
 python-dotenv==1.0.0
-requests==2.31.0
-pydantic==2.6.1
-pydantic-settings==2.1.0
+celery==5.3.6
+redis==4.6.0
+netmiko==4.2.0
+asyncssh==2.14.10.0
+prometheus-client==0.2

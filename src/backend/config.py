@@ -1,17 +1,23 @@
-from pydantic_settings import BaseSettings
-from pydantic import Field
+import os
+from pydantic import BaseSettings
 
 
 class Settings(BaseSettings):
-    app_name: str = "Network Automation API"
-    redis_url: str = Field("redis://localhost:6379", env="REDIS_URL")
-    ai_api_key: str = Field(..., env="AI_API_KEY")
-    max_connections: int = Field(50, env="MAX_CONNECTIONS")
-    default_timeout: int = Field(30, env="DEFAULT_TIMEOUT")
+    APP_NAME: str = "AI Network Configurator"
+    DEBUG: bool = True
+    API_PREFIX: str = "/api"
+
+    # 硅基流动API配置
+    SILICONFLOW_API_KEY: str = os.getenv("SILICONFLOW_API_KEY", "")
+    SILICONFLOW_API_URL: str = os.getenv("SILICONFLOW_API_URL", "https://api.siliconflow.ai/v1")
+
+    # 交换机配置
+    SWITCH_USERNAME: str = os.getenv("SWITCH_USERNAME", "admin")
+    SWITCH_PASSWORD: str = os.getenv("SWITCH_PASSWORD", "admin")
+    SWITCH_TIMEOUT: int = os.getenv("SWITCH_TIMEOUT", 10)
 
     class Config:
         env_file = ".env"
-        extra = "ignore"
 
 
 settings = Settings()

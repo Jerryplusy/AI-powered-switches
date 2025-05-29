@@ -1,6 +1,7 @@
 import React from 'react';
 import { Box, Button, Heading, VStack } from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
+import Card from '@/components/ui/Card';
 
 const Welcome = () => {
   const navigate = useNavigate();

@@ -1,22 +1,15 @@
-version: '3.13.2'
+FROM python:3.13-slim
 
-services:
-  app:
-    build: .
-    ports:
-      - "8000:8000"
-    depends_on:
-      - redis
-    environment:
-      - REDIS_URL=redis://redis:6379
+WORKDIR /app
 
-  redis:
-    image: redis:alpine
-    ports:
-      - "6379:6379"
+COPY ./requirements.txt /app/requirements.txt
 
-  worker:
-    build: .
-    command: celery -A app.services.task_service worker --loglevel=info
-    depends_on:
-      - ONBUILD
+RUN pip install --no-cache-dir --upgrade -r /app/requirements.txt
+
+COPY . /app
+
+ENV PYTHONPATH=/app
+ENV PORT=8000
+ENV HOST=0.0.0.0
+
+CMD ["uvicorn", "run:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

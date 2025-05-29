@@ -1,59 +1,61 @@
-import aiohttp
-import logging
+import json
+import httpx
 from typing import Dict, Any
-from src.backend.config import settings
-
-logger = logging.getLogger(__name__)
+from src.backend.app.utils.exceptions import SiliconFlowAPIException
 
 
-async def call_ai_api(command: str, device_type: str, vendor: str, api_key: str) -> Dict[str, Any]:
-    """
-    调用硅基流动API解析中文命令
-
-    参数:
-    - command: 中文配置命令
-    - device_type: 设备类型
-    - vendor: 设备厂商
-    - api_key: API密钥
-
-    返回:
-    - 解析后的配置和状态信息
-    """
-    url = settings.ai_api_url
-
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json"
-    }
-
-    payload = {
-        "command": command,
-        "device_type": device_type,
-        "vendor": vendor,
-        "output_format": "json"
-    }
-
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.post(url, json=payload, headers=headers) as response:
-                if response.status != 200:
-                    error = await response.text()
-                    logger.error(f"AI API error: {error}")
-                    return {
-                        "success": False,
-                        "message": f"AI API returned {response.status}: {error}"
-                    }
-
-                data = await response.json()
-                return {
-                    "success": True,
-                    "config": data.get("config", {}),
-                    "message": data.get("message", "Command parsed successfully")
-                }
-
-    except Exception as e:
-        logger.error(f"Error calling AI API: {str(e)}")
-        return {
-            "success": False,
-            "message": f"Error calling AI API: {str(e)}"
+class AIService:
+    def __init__(self, api_key: str, api_url: str):
+        self.api_key = api_key
+        self.api_url = api_url
+        self.headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
         }
+
+    async def parse_command(self, command: str) -> Dict[str, Any]:
+        """
+        调用硅基流动API解析中文命令
+        """
+        prompt = f"""
+        你是一个网络设备配置专家，请将以下中文命令转换为网络设备配置JSON。
+        支持的配置包括：VLAN、端口、路由、ACL等。
+        返回格式必须为JSON，包含配置类型和详细参数。
+
+        命令：{command}
+        """
+
+        data = {
+            "model": "text-davinci-003",
+            "prompt": prompt,
+            "max_tokens": 1000,
+            "temperature": 0.3
+        }
+
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    f"{self.api_url}/completions",
+                    headers=self.headers,
+                    json=data,
+                    timeout=30
+                )
+
+                if response.status_code != 200:
+                    raise SiliconFlowAPIException(response.text)
+
+                result = response.json()
+                config_str = result["choices"][0]["text"].strip()
+
+                # 确保返回的是有效的JSON
+                try:
+                    config = json.loads(config_str)
+                    return config
+                except json.JSONDecodeError:
+                    # 尝试修复可能的多余字符
+                    if config_str.startswith("```json"):
+                        config_str = config_str[7:-3].strip()
+                        return json.loads(config_str)
+                    raise SiliconFlowAPIException("Invalid JSON format returned from AI")
+        except httpx.HTTPError as e:
+            raise SiliconFlowAPIException(str(e))

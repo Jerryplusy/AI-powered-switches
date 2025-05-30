@@ -1,7 +1,7 @@
 {
   "name": "network-admin-frontend",
   "version": "0.1.0",
-  "private": true,
+  "private": false,
   "dependencies": {
     "@chakra-ui/react": "^3.19.1",
     "@emotion/react": "^11.14.0",
@@ -19,6 +19,7 @@
     "react-router-dom": "^7.6.1",
     "react-scripts": "^5.0.1",
     "recharts": "^2.15.3",
+    "styled-components": "^6.1.18",
     "web-vitals": "^2.1.4",
     "webpack": "^5.99.9"
   },

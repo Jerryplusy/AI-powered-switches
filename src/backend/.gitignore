@@ -1,7 +1,10 @@
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
+
+# Python packaging
 .Python
 build/
 develop-eggs/
@@ -23,6 +26,8 @@ MANIFEST
 # IDE
 .idea/
 .vscode/
+*.swp
+*.swo
 
 # Environment
 .env
@@ -35,3 +40,10 @@ venv.bak/
 
 # Logs
 *.log
+*.log.*
+logs/
+
+# Secrets
+*.secret
+*.key
+*.pem

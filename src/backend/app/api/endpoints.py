@@ -2,11 +2,35 @@ from fastapi import APIRouter, Depends, HTTPException
 from typing import Any
 from pydantic import BaseModel
 
-from src.backend.app.services.ai_services import AIService
-from src.backend.app.api.network_config import SwitchConfigurator
-from src.backend.config import settings
+from ...app.services.ai_services import AIService
+from ...app.api.network_config import SwitchConfigurator
+from ...config import settings
+from ..services.network_scanner import NetworkScanner
 
-router = APIRouter()
+router = APIRouter(prefix="/api", tags=["API"])
+scanner = NetworkScanner()
+
+@router.get("/test")
+async def test_endpoint():
+    return {"message": "Hello World"}
+
+@router.get("/scan_network", summary="扫描网络中的交换机")
+async def scan_network(subnet: str = "192.168.1.0/24"):
+    try:
+        devices = scanner.scan_subnet(subnet)
+        return {
+            "success": True,
+            "devices": devices,
+            "count": len(devices)
+        }
+    except Exception as e:
+        raise HTTPException(500, f"扫描失败: {str(e)}")
+
+@router.get("/list_devices", summary="列出已发现的交换机")
+async def list_devices():
+    return {
+        "devices": scanner.load_cached_devices()
+    }
 
 class CommandRequest(BaseModel):
     command: str

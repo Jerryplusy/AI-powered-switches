@@ -1,8 +1,10 @@
 from fastapi import FastAPI
-from src.backend.app.api.endpoints import router as api_router
+from src.backend.app.api.endpoints import router
 from src.backend.app.utils.logger import setup_logging
 from src.backend.config import settings
 
+app = FastAPI()
+app.include_router(router,prefix="/api")
 
 def create_app() -> FastAPI:
     # 设置日志
@@ -18,6 +20,6 @@ def create_app() -> FastAPI:
     )
 
     # 添加API路由
-    app.include_router(api_router, prefix=settings.API_PREFIX)
+    app.include_router(router, prefix=settings.API_PREFIX)
 
     return app

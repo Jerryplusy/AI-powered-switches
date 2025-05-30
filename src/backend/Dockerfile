@@ -11,5 +11,7 @@ COPY . /app
 ENV PYTHONPATH=/app
 ENV PORT=8000
 ENV HOST=0.0.0.0
+.env
+*.secret
 
 CMD ["uvicorn", "run:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

@@ -6,7 +6,11 @@ from src.backend.app.services.ai_services import AIService
 from src.backend.app.api.network_config import SwitchConfigurator
 from src.backend.config import settings
 
-router = APIRouter()
+router = APIRouter(prefix="/api", tags=["API"])
+
+@router.get("/test")
+async def test_endpoint():
+    return {"message": "Hello World"}
 
 class CommandRequest(BaseModel):
     command: str

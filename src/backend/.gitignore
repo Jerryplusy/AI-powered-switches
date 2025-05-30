@@ -35,3 +35,7 @@ venv.bak/
 
 # Logs
 *.log
+
+# 忽略.env文件
+.env
+*.secret

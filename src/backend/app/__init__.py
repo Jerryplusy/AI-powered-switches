@@ -4,7 +4,7 @@ from src.backend.app.utils.logger import setup_logging
 from src.backend.config import settings
 
 app = FastAPI()
-app.include_router(router)
+app.include_router(router,prefix="/api")
 
 def create_app() -> FastAPI:
     # 设置日志

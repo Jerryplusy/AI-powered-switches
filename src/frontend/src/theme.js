@@ -3,25 +3,21 @@ import { defineConfig, createSystem, defaultConfig } from '@chakra-ui/react';
 const config = defineConfig({
   cssVarsRoot: ':where(:root, :host)',
   cssVarsPrefix: 'ck',
-  strictTokens: false,
+  strictTokens: true,
 
-  globalCss: {
-    'html, body': {
-      margin: 0,
-      padding: 0,
-      fontFamily: "'Roboto', sans-serif",
-      backgroundColor: '{colors.bg}',
-      color: '{colors.text}',
-    },
-  },
+  globalCss: {}, //全局css
 
   conditions: {
-    cqSm: '@container(min-width: 320px)',
-    child: '& > *',
+    child: '& > *', //子元素选择
   },
 
   theme: {
+    //核心主题配置
+    components: {
+      //组件样式
+    },
     breakpoints: {
+      //响应式断点
       sm: '320px',
       md: '768px',
       lg: '960px',
@@ -29,6 +25,7 @@ const config = defineConfig({
     },
 
     tokens: {
+      //基础主题
       colors: {
         bg: '#f9fafb',
         text: '#1a202c',
@@ -46,6 +43,7 @@ const config = defineConfig({
     },
 
     semanticTokens: {
+      //自定义标记
       colors: {
         danger: { value: '{colors.red}' },
         primary: { value: '{colors.primary}' },
@@ -54,6 +52,7 @@ const config = defineConfig({
     },
 
     keyframes: {
+      //关键帧
       fadeIn: {
         from: { opacity: 0 },
         to: { opacity: 1 },
@@ -65,6 +64,7 @@ const config = defineConfig({
     },
 
     animationStyles: {
+      //预定义动画样式
       fadeIn: {
         animation: 'fadeIn 0.3s ease-in',
       },
@@ -74,6 +74,7 @@ const config = defineConfig({
     },
 
     textStyles: {
+      //文字样式
       heading: {
         description: 'Page heading',
         value: {
@@ -90,6 +91,7 @@ const config = defineConfig({
     },
 
     layerStyles: {
+      //层样式
       card: {
         bg: 'white',
         boxShadow: 'soft',
@@ -100,6 +102,4 @@ const config = defineConfig({
   },
 });
 
-const system = createSystem(defaultConfig, config);
-
-export default system;
+export default createSystem(defaultConfig, config);

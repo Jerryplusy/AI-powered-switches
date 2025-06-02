@@ -9,7 +9,8 @@
   - React
   - JSX
   - Framer-motion
-  - chakra-ui
+  - ~~chakra-ui~~
+  - shadcn-ui
 - HTML5
 
 ### 项目分工

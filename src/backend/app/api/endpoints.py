@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from typing import Any
+from typing import List
 from pydantic import BaseModel
 
 from ...app.services.ai_services import AIService
@@ -9,6 +9,21 @@ from ..services.network_scanner import NetworkScanner
 
 router = APIRouter(prefix="/api", tags=["API"])
 scanner = NetworkScanner()
+
+class BatchConfigRequest(BaseModel):
+    config: dict
+    switch_ips: List[str]  # 支持多个IP
+
+@router.post("/batch_apply_config")
+async def batch_apply_config(request: BatchConfigRequest):
+    results = {}
+    for ip in request.switch_ips:
+        try:
+            configurator = SwitchConfigurator()
+            results[ip] = await configurator.apply_config(ip, request.config)
+        except Exception as e:
+            results[ip] = str(e)
+    return {"results": results}
 
 @router.get("/test")
 async def test_endpoint():

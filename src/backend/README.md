@@ -9,7 +9,7 @@ src/backend/
 ├── app/
 │   ├── __init__.py             # 创建 Flask 应用实例
 │   ├── api/                    # API 路由模块
-│   │   ├── __init__.py         # 注册 API 蓝图
+│   │   ├—── __init__.py         # 注册 API 蓝图
 │   │   ├── command_parser.py   # /api/parse_command 接口
 │   │   └── network_config.py   # /api/apply_config 接口
 │   └── services/               # 核心服务逻辑

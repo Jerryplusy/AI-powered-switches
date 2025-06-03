@@ -1,14 +1,26 @@
 import paramiko
+from tenacity import retry, stop_after_attempt
 import asyncio
-from typing import Dict, Any
+from typing import Dict, Any,List
 from ..utils.exceptions import SwitchConfigException
 
 
 class SwitchConfigurator:
-    def __init__(self, username: str, password: str, timeout: int = 10):
+    def __init__(self, username: str, password: str, timeout: int = 10,max_workers=5):
         self.username = username
         self.password = password
         self.timeout = timeout
+        self.semaphore = asyncio.Semaphore(max_workers)
+
+    @retry(stop=stop_after_attempt(3))
+    async def safe_apply(self, ip: str, config: dict):
+        async with self.semaphore:
+            return await self.apply_config(ip, config)
+
+    async def batch_configure(self, config: dict, ips: List[str]):
+        """并发配置多台设备"""
+        tasks = [self.apply_config(ip, config) for ip in ips]
+        return await asyncio.gather(*tasks, return_exceptions=True)
 
     async def apply_config(self, switch_ip: str, config: Dict[str, Any]) -> str:
         """

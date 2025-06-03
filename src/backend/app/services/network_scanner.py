@@ -3,11 +3,12 @@ import json
 from pathlib import Path
 from typing import List, Dict
 from ..utils.logger import logger
-
+import os
 
 class NetworkScanner:
     def __init__(self, cache_path: str = "switch_devices.json"):
         self.cache_path = Path(cache_path)
+        os.environ["PATH"] += r";D:\Program Files\Nmap"
         self.nm = nmap.PortScanner()
 
     def scan_subnet(self, subnet: str = "192.168.1.0/24") -> List[Dict]:

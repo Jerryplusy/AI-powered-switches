@@ -8,7 +8,7 @@ const BackgroundBlur = () => (
     left={0}
     width={'100%'}
     height={'100%'}
-    filter={'blur(15px'}
+    filter={'blur(6px)'}
     zIndex={0}
   >
     <Image src={image} objectFit={'cover'} width={'100%'} height={'100%'} />

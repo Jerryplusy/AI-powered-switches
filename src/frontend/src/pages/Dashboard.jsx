@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Text } from '@chakra-ui/react';
-import Header from '../components/Header';
+import Header from '../components/system/Header';
 
 const Dashboard = () => {
   return (

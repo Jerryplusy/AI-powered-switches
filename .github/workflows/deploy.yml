@@ -7,9 +7,9 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: src/frontend
+    # defaults:
+      #run:
+        # working-directory: src/frontend
 
     steps:
       - uses: actions/checkout@v4

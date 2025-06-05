@@ -1,12 +1,11 @@
-name: Deploy React App from src/frontend
+name: Deploy React App
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -14,6 +13,14 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      # 调试：检查文件结构（临时添加）
+      - name: Debug - Check files
+        run: |
+          echo "Root directory:"
+          ls -la
+          echo "Frontend directory:"
+          ls -la src/frontend/
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -24,21 +31,17 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          registry-url: https://registry.npmjs.org
           cache: 'pnpm'
 
       - name: Install dependencies
-        run: pnpm install
+        run: |
+          cd src/frontend
+          pnpm install
 
-      - name: Build project
+      - name: Build
         run: pnpm run build
 
-      - name: Configure Git identity
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Deploy to GitHub Pages
+      - name: Deploy
         run: npx gh-pages -d build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

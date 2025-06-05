@@ -5,7 +5,10 @@ const MotionBox = motion(Box);
 
 const MotionCard = ({ icon, text, onClick }) => (
   <MotionBox
-    whileHover={{ y: -5 }}
+    whileHover={{
+      y: -3,
+      boxShadow: 'inset 0 0 0 1000px rgba(255, 255, 255, 0.3)',
+    }}
     display={'flex'}
     alignItems={'center'}
     bg={'whiteAlpha.200'}
@@ -16,6 +19,7 @@ const MotionCard = ({ icon, text, onClick }) => (
     borderRadius={'md'}
     cursor={'pointer'}
     onClick={onClick}
+    transition={{ duration: 0.1 }}
   >
     {icon && <Image src={icon} boxSize={5} mr={2} />}
     <Text color={'white'}>{text}</Text>

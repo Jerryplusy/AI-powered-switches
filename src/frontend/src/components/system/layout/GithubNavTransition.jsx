@@ -3,6 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Box, Text, Image } from '@chakra-ui/react';
 import githubIcon from '@/resources/welcome/image/github.svg';
 
+/**
+ * GitHub图标变换=>导航栏
+ * @returns {JSX.Element}
+ * @constructor
+ */
 const GithubNavTransition = () => {
   const { pathname } = useLocation();
   const isDashboard = pathname.startsWith('/dashboard');

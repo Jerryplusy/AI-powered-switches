@@ -13,12 +13,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
-      # 调试：检查文件结构（临时添加）
-      - name: Debug - Check files
-        run: |
-          echo "Root directory:"
-          ls -la
+      - name: Navigate to project
+        run: cd src/frontend && echo "PROJECT_DIR=$(pwd)" >> $GITHUB_ENV
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -30,14 +26,18 @@ jobs:
         with:
           node-version: 20
           cache: 'pnpm'
+          cache-dependency-path: src/frontend/pnpm-lock.yaml
 
       - name: Install dependencies
+        working-directory: src/frontend
         run: pnpm install
 
       - name: Build
+        working-directory: src/frontend
         run: pnpm run build
 
       - name: Deploy
+        working-directory: src/frontend
         run: npx gh-pages -d build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

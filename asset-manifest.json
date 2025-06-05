@@ -1,13 +1,13 @@
 {
   "files": {
-    "main.js": "/AI-powered-switches/static/js/main.263f6a53.js",
+    "main.js": "/AI-powered-switches/static/js/main.2b38b7cc.js",
     "static/media/background.png": "/AI-powered-switches/static/media/background.05a12f3cb77bbd097e62.png",
-    "static/media/setting.svg": "/AI-powered-switches/static/media/setting.b15e5ee4332515a44716757e5dd7d5d7.svg",
-    "static/media/github.svg": "/AI-powered-switches/static/media/github.bd348aab7f2b5ff5f2f7f74213519307.svg",
+    "static/media/setting.svg": "/AI-powered-switches/static/media/setting.f3c7ad7cb5c204a45d2a61db249c65c1.svg",
+    "static/media/github.svg": "/AI-powered-switches/static/media/github.7b6b6207318a081494f2cc87c6c08f4c.svg",
     "index.html": "/AI-powered-switches/index.html",
-    "main.263f6a53.js.map": "/AI-powered-switches/static/js/main.263f6a53.js.map"
+    "main.2b38b7cc.js.map": "/AI-powered-switches/static/js/main.2b38b7cc.js.map"
   },
   "entrypoints": [
-    "static/js/main.263f6a53.js"
+    "static/js/main.2b38b7cc.js"
   ]
 }

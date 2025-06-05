@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.js": "/AI-powered-switches/static/js/main.3dc7eece.js",
+    "static/media/background.png": "/AI-powered-switches/static/media/background.05a12f3cb77bbd097e62.png",
+    "static/media/setting.svg": "/AI-powered-switches/static/media/setting.b15e5ee4332515a44716757e5dd7d5d7.svg",
+    "static/media/github.svg": "/AI-powered-switches/static/media/github.bd348aab7f2b5ff5f2f7f74213519307.svg",
+    "index.html": "/AI-powered-switches/index.html",
+    "main.3dc7eece.js.map": "/AI-powered-switches/static/js/main.3dc7eece.js.map"
+  },
+  "entrypoints": [
+    "static/js/main.3dc7eece.js"
+  ]
+}

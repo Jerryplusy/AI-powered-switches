@@ -1,0 +1,28 @@
+name: Deploy React App from src/frontend
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/frontend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - run: pnpm install
+      - run: pnpm run build
+      - run: npx gh-pages -d build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

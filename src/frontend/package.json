@@ -2,6 +2,7 @@
   "name": "network-admin-frontend",
   "version": "0.1.0",
   "private": false,
+  "homepage": "https://JerryPlsuy.github.io/AI-powered-switches",
   "dependencies": {
     "@chakra-ui/react": "^3.19.1",
     "@emotion/react": "^11.14.0",
@@ -28,6 +29,8 @@
     "build": "react-app-rewired build",
     "test": "react-app-rewired test",
     "eject": "react-scripts eject",
+    "predeploy": "pnpm run build",
+    "deploy": "gh-pages -d build",
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx,json,css,md}\""
   },
   "eslintConfig": {
@@ -54,6 +57,7 @@
     "eslint-config-airbnb": "^19.0.4",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^4.3.0",
+    "gh-pages": "^6.3.0",
     "prettier": "^3.5.3",
     "react-app-rewired": "^2.2.1"
   }

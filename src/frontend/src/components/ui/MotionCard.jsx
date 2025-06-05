@@ -3,6 +3,14 @@ import { motion } from 'framer-motion';
 
 const MotionBox = motion(Box);
 
+/**
+ * 带有动作效果的卡片
+ * @param icon 可选图标
+ * @param text 文字
+ * @param onClick 点击执行操作
+ * @returns {JSX.Element}
+ * @constructor
+ */
 const MotionCard = ({ icon, text, onClick }) => (
   <MotionBox
     whileHover={{

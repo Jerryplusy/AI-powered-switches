@@ -3,8 +3,9 @@ import AppShell from '@/components/system/layout/AppShell';
 import buildRoutes from '@/constants/routes/routes';
 
 const App = () => {
+  const isProd = process.env.NODE_ENV === 'production';
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={isProd ? '/AI-powered-switches' : '/'}>
       <Routes>
         <Route path="/" element={<AppShell />}>
           {buildRoutes()}

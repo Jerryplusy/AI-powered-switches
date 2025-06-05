@@ -7,14 +7,8 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    # defaults:
-      #run:
-        # working-directory: src/frontend
-
     steps:
       - uses: actions/checkout@v4
-      - name: Navigate to project
-        run: cd src/frontend && echo "PROJECT_DIR=$(pwd)" >> $GITHUB_ENV
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -26,7 +20,7 @@ jobs:
         with:
           node-version: 20
           cache: 'pnpm'
-          cache-dependency-path: src/frontend/pnpm-lock.yaml
+          cache-dependency-path: 'src/frontend/pnpm-lock.yaml'
 
       - name: Install dependencies
         working-directory: src/frontend
@@ -36,8 +30,11 @@ jobs:
         working-directory: src/frontend
         run: pnpm run build
 
-      - name: Deploy
+      - name: Deploy to GitHub Pages
         working-directory: src/frontend
-        run: npx gh-pages -d build
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          npx gh-pages -d build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

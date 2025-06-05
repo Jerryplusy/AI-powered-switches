@@ -19,8 +19,6 @@ jobs:
         run: |
           echo "Root directory:"
           ls -la
-          echo "Frontend directory:"
-          ls -la src/frontend/
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -34,9 +32,7 @@ jobs:
           cache: 'pnpm'
 
       - name: Install dependencies
-        run: |
-          cd src/frontend
-          pnpm install
+        run: pnpm install
 
       - name: Build
         run: pnpm run build

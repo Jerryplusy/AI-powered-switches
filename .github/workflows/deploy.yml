@@ -40,6 +40,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          npx gh-pages -d build -u "github-actions[bot] <github-actions[bot]@users.noreply.github.com>" --repo "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@users.noreply.github.com"
+          npx gh-pages -d build -u "github-actions <github-actions@users.noreply.github.com>" --repo "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"

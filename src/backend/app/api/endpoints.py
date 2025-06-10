@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import (APIRouter, HTTPException)
 from typing import List
 from pydantic import BaseModel
 
@@ -87,3 +87,4 @@ async def apply_config(request: ConfigRequest):
             status_code=500,
             detail=f"Failed to apply config: {str(e)}"
         )
+

@@ -1,7 +1,7 @@
 # AI-powered-switches Backend
 
 这是 AI-powered-switches 的后端服务，基于 `Flask` 构建，提供 `REST API` 接口，用于解析自然语言生成网络交换机配置并下发到设备
-
+注意下载Nmap才可扫描交换机网址：https://nmap.org/download.html
 ### 项目结构
 
 ```bash

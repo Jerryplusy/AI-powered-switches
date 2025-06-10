@@ -8,3 +8,4 @@ loguru>=0.7.0
 python-nmap>=0.7.1
 tenacity>=9.1.2
 typing-extensions>=4.0.0
+aiofiles>=24.1.0

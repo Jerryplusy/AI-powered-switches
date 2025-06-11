@@ -9,10 +9,10 @@ import FadeInWrapper from '@/components/system/layout/FadeInWrapper';
  */
 const WelcomeContent = () => {
   return (
-    <VStack spacing={10} py={200} align="center" px={4}>
+    <VStack spacing={10} py={200} align={'center'} px={4}>
       <FadeInWrapper delay={0.2} yOffset={-5}>
-        <Box textAlign="center">
-          <Heading size="6xl" fontWeight="black" color="teal.300">
+        <Box textAlign={'center'}>
+          <Heading size="6xl" fontWeight={'black'} color={'teal.300'}>
             智能网络交换机
             <br />
             管理系统
@@ -20,8 +20,8 @@ const WelcomeContent = () => {
         </Box>
       </FadeInWrapper>
       <FadeInWrapper delay={0.3} yOffset={-5}>
-        <Box textAlign="center">
-          <Text mt={6} fontSize="2xl" color="gray.300">
+        <Box textAlign={'center'}>
+          <Text mt={6} fontSize={'2xl'} color={'gray.300'}>
             助力大型网络交换机配置及网络流量管理，方便的管控网络，让网络配置不再困难
           </Text>
         </Box>

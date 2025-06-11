@@ -4,19 +4,28 @@ import { motion } from 'framer-motion';
 const MotionBox = motion(Box);
 
 /**
- * 带有动作效果的卡片
+ * 卡片组件
  * @param icon 可选图标
  * @param text 文字
- * @param onClick 点击执行操作
+ * @param onClick 点击执行函数
+ * @param hasBlurBackground 是否模糊背景
+ * @param noHover 是否禁用 hover 动画
+ * @param children 子组件
+ * @param props
  * @returns {JSX.Element}
  * @constructor
  */
-const MotionCard = ({ icon, text, onClick }) => (
+const MotionCard = ({
+  icon,
+  text,
+  onClick,
+  hasBlurBackground = false,
+  disableHover = false,
+  children,
+  ...props
+}) => (
   <MotionBox
-    whileHover={{
-      y: -3,
-      boxShadow: 'inset 0 0 0 1000px rgba(255, 255, 255, 0.3)',
-    }}
+    position={'relative'}
     display={'flex'}
     alignItems={'center'}
     bg={'whiteAlpha.200'}
@@ -25,12 +34,46 @@ const MotionCard = ({ icon, text, onClick }) => (
     px={4}
     py={2}
     borderRadius={'md'}
-    cursor={'pointer'}
+    cursor={onClick ? 'pointer' : 'default'}
     onClick={onClick}
-    transition={{ duration: 0.1 }}
+    transition={'all 0.2s ease'}
+    overflow={'hidden'}
+    _hover={
+      disableHover
+        ? {}
+        : {
+            _before: {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              bg: 'whiteAlpha.100',
+              zIndex: 1,
+            },
+          }
+    }
+    {...props}
   >
-    {icon && <Image src={icon} boxSize={5} mr={2} />}
-    <Text color={'white'}>{text}</Text>
+    {hasBlurBackground && (
+      <Box
+        position={'absolute'}
+        top={0}
+        left={0}
+        right={0}
+        bottom={0}
+        backdropFilter={'blur(4px)'}
+        zIndex={-1}
+      />
+    )}
+    {icon && <Image src={icon} boxSize={5} mr={2} zIndex={2} />}
+    {text && (
+      <Text color={'white'} zIndex={2}>
+        {text}
+      </Text>
+    )}
+    <Box zIndex={2}>{children}</Box>
   </MotionBox>
 );
 

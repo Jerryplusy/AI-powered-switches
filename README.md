@@ -11,7 +11,6 @@
   - Framer-motion
   - chakra-ui
 - HTML5
-
 ### 项目分工
 - **后端api，人工智能算法** : `3`(主要) & `log_out` & `Jerry`(maybe) 使用python
 - **前端管理后台设计**：`Jerry`使用react 
@@ -19,7 +18,9 @@
 
 ### 各部分说明
 
-[网页管理前端](https://github.com/Jerryplusy/AI-powered-switches/blob/main/src/frontend/README.md)
+[网页管理前端如下](https://github.com/Jerryplusy/AI-powered-switches/blob/main/src/frontend/README.md)
+
+![img](./src/frontend/src/resources/img.png)
 
 [逻辑处理后端](https://github.com/Jerryplusy/AI-powered-switches/blob/main/src/backend/README.md)
 

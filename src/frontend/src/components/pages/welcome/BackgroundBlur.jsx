@@ -1,5 +1,8 @@
 import { Box, Image } from '@chakra-ui/react';
+import { motion } from 'framer-motion';
 import image from '@/resources/welcome/image/background.png';
+
+const MotionBox = motion(Box);
 
 /**
  * 带高斯模糊的背景
@@ -7,7 +10,7 @@ import image from '@/resources/welcome/image/background.png';
  * @constructor
  */
 const BackgroundBlur = () => (
-  <Box
+  <MotionBox
     position={'absolute'}
     top={0}
     left={0}
@@ -15,9 +18,12 @@ const BackgroundBlur = () => (
     height={'100%'}
     filter={'blur(6px)'}
     zIndex={0}
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    transition={{ duration: 0.4, ease: 'easeInOut' }}
   >
     <Image src={image} objectFit={'cover'} width={'100%'} height={'100%'} />
-  </Box>
+  </MotionBox>
 );
 
 export default BackgroundBlur;

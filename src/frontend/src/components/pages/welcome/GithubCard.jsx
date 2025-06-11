@@ -13,6 +13,7 @@ const GithubCard = () => {
       <MotionCard
         icon={githubIcon}
         text={'Github'}
+        hasBlurBackground={true}
         onClick={() => window.open('https://github.com/Jerryplusy/AI-powered-switches', '_blank')}
       />
     </FadeInWrapper>

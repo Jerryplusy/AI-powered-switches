@@ -12,7 +12,7 @@ const DashboardCard = () => {
   const navigate = useNavigate();
   return (
     <FadeInWrapper delay={0.4} yOffset={-5}>
-      <MotionCard icon={manageIcon} text="管理后台" onClick={() => navigate('/dashboard')} />
+      <MotionCard icon={manageIcon} text={'管理后台'} onClick={() => navigate('/dashboard')} />
     </FadeInWrapper>
   );
 };

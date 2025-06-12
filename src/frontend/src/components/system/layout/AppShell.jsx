@@ -1,7 +1,7 @@
 import { Outlet, useLocation } from 'react-router-dom';
-import PageTransition from './PageTransition';
 import { Box } from '@chakra-ui/react';
 import { AnimatePresence } from 'framer-motion';
+import PageTransition from './PageTransition';
 import GithubTransitionCard from '@/components/system/layout/github/GithubTransitionCard';
 
 /**
@@ -11,12 +11,11 @@ import GithubTransitionCard from '@/components/system/layout/github/GithubTransi
  */
 const AppShell = () => {
   const location = useLocation();
-
   return (
-    <Box position={'relative'} height={'100vh'} overflow={'hidden'}>
+    <Box position="relative" height="100vh" overflow="hidden">
       <GithubTransitionCard />
-      <Box overflowY={'auto'} height={'100%'}>
-        <AnimatePresence mode={'sync'}>
+      <Box overflowY="auto" height="100%">
+        <AnimatePresence mode="wait" initial={false}>
           <PageTransition key={location.pathname}>
             <Outlet />
           </PageTransition>

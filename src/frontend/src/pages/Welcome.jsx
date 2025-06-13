@@ -1,19 +1,22 @@
-import React from 'react';
-import { Box, Button, Heading, VStack } from '@chakra-ui/react';
-import { useNavigate } from 'react-router-dom';
+import { Box } from '@chakra-ui/react';
+import BackgroundBlur from '@/components/pages/welcome/BackgroundBlur';
+import WelcomeContent from '@/components/pages/welcome/WelcomeContent';
 
+/**
+ * 欢迎页
+ * @returns {JSX.Element}
+ * @constructor
+ */
 const Welcome = () => {
-  const navigate = useNavigate();
   return (
-    <Box textAlign={'center'} py={10} px={6}>
-      <VStack spacing={4}>
-        <Heading as={'h1'} size={'x1'}>
-          欢迎使用交换机管理后台
-        </Heading>
-        <Button colorScheme={'teal'} onClick={() => navigate('/dashboard')}>
-          进入控制台
-        </Button>
-      </VStack>
+    <Box position={'relative'} height={'100vh'} overflow={'hidden'}>
+      <BackgroundBlur />
+      <Box position={'absolute'} top={4} right={4} zIndex={10}>
+        {/*<GithubCard />*/}
+      </Box>
+      <Box overflowY={'auto'} height={'100%'} zIndex={1} position={'relative'}>
+        <WelcomeContent />
+      </Box>
     </Box>
   );
 };

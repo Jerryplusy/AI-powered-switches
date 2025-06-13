@@ -18,9 +18,7 @@
 
 ### 各部分说明
 
-[网页管理前端如下](https://github.com/Jerryplusy/AI-powered-switches/blob/main/src/frontend/README.md)
-
-![img](./src/frontend/src/resources/img.png)
+[网页管理前端](https://github.com/Jerryplusy/AI-powered-switches/blob/main/src/frontend/README.md)
 
 [逻辑处理后端](https://github.com/Jerryplusy/AI-powered-switches/blob/main/src/backend/README.md)
 

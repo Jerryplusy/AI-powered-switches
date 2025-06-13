@@ -1,22 +1,31 @@
+# 使用官方 Python 基础镜像
 FROM python:3.13-slim
 
+# 设置工作目录
 WORKDIR /app
 
-# 1. 先复制依赖文件并安装
-COPY ./requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir --upgrade -r /app/requirements.txt
+# 安装系统依赖（包含 nmap 和 SSH 客户端）
+RUN apt-get update && \
+    apt-get install -y \
+    nmap \
+    telnet \
+    openssh-client && \
+    rm -rf /var/lib/apt/lists/*
 
-# 2. 复制项目代码（排除 .env 和缓存文件）
-COPY . /app
+# 复制项目文件
+COPY ./src/backend/requirements.txt .
+COPY ./src/backend /app
 
-# 3. 环境变量配置
-ENV PYTHONPATH=/app \
-    PORT=8000 \
-    HOST=0.0.0.0
+# 安装 Python 依赖
+RUN pip install --no-cache-dir -r requirements.txt && \
+    pip install asyncssh telnetlib3 aiofiles
 
-# 4. 安全设置
-RUN find /app -name "*.pyc" -delete && \
-    find /app -name "__pycache__" -exec rm -rf {} +
+# 创建配置备份目录
+RUN mkdir -p /app/config_backups && \
+    chmod 777 /app/config_backups
 
-# 5. 启动命令（修正路径）
-CMD ["uvicorn", "src.backend.app:app", "--host", "0.0.0.0", "--port", "8000"]
+# 暴露 FastAPI 端口
+EXPOSE 8000
+
+# 启动命令
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

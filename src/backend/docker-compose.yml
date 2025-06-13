@@ -1,0 +1,38 @@
+version: '3.13'
+
+services:
+  app:
+    build: .
+    container_name: switch_configurator
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./src/backend:/app
+      - switch_backups:/app/config_backups
+    environment:
+      - SWITCH_USERNAME=${SWITCH_USERNAME:-admin}
+      - SWITCH_PASSWORD=${SWITCH_PASSWORD:-admin}
+      - SWITCH_TIMEOUT=${SWITCH_TIMEOUT:-10}
+      - SILICONFLOW_API_KEY=${SILICONFLOW_API_KEY}
+      - SILICONFLOW_API_URL=${SILICONFLOW_API_URL}
+    restart: unless-stopped
+    networks:
+      - backend
+
+  # 可选：添加 Redis 用于缓存设备扫描结果
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - backend
+
+volumes:
+  switch_backups:
+  redis_data:
+
+networks:
+  backend:
+    driver: bridge

@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from src.backend.app.api.network_config import SwitchConfigurator  # 导入你的核心类
+from src.backend.app.api.network_config import SwitchConfigurator
 #该文件用于测试
 
 # 设置日志

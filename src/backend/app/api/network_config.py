@@ -4,11 +4,10 @@ import telnetlib3
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Union
-
-import aiofiles
-import asyncssh
 from pydantic import BaseModel
 from tenacity import retry, stop_after_attempt, wait_exponential
+import aiofiles
+import asyncssh
 
 
 # ----------------------
@@ -39,7 +38,7 @@ class SSHConnectionException(SwitchConfigException):
 
 
 # ----------------------
-# 核心配置器（完整双模式）
+# 核心配置器
 # ----------------------
 class SwitchConfigurator:
     def __init__(
@@ -63,12 +62,35 @@ class SwitchConfigurator:
         self.ensp_port = ensp_port
         self.ensp_delay = ensp_command_delay
         self.ssh_options = ssh_options
+        self._connection_pool = {}  # SSH连接池
 
-    async def _apply_config(self, ip: str, config: Union[Dict, SwitchConfig]) -> str:
-        """实际配置逻辑"""
+    # ====================
+    # 公开API方法
+    # ====================
+    async def apply_config(self, ip: str, config: Union[Dict, SwitchConfig]) -> Dict:
+        """
+        应用配置到交换机（主入口）
+        返回格式:
+        {
+            "status": "success"|"failed",
+            "output": str,
+            "backup_path": str,
+            "error": Optional[str],
+            "timestamp": str
+        }
+        """
         if isinstance(config, dict):
             config = SwitchConfig(**config)
 
+        result = await self.safe_apply(ip, config)
+        result["timestamp"] = datetime.now().isoformat()
+        return result
+
+    # ====================
+    # 内部实现方法
+    # ====================
+    async def _apply_config(self, ip: str, config: SwitchConfig) -> str:
+        """实际配置逻辑"""
         commands = (
             self._generate_ensp_commands(config)
             if self.ensp_mode
@@ -84,58 +106,65 @@ class SwitchConfigurator:
             else await self._send_ssh_commands(ip, commands)
         )
 
-    # --------- eNSP模式专用 ---------
     async def _send_ensp_commands(self, ip: str, commands: List[str]) -> str:
         """Telnet协议执行（eNSP）"""
         try:
-            # 修复点：使用正确的timeout参数
             reader, writer = await telnetlib3.open_connection(
                 host=ip,
                 port=self.ensp_port,
-                connect_minwait=self.timeout,  # telnetlib3的实际可用参数
+                connect_minwait=self.timeout,
                 connect_maxwait=self.timeout
             )
 
-            # 登录流程（增加超时处理）
-            try:
-                await asyncio.wait_for(reader.readuntil(b"Username:"), timeout=self.timeout)
-                writer.write(f"{self.username}\n")
-
-                await asyncio.wait_for(reader.readuntil(b"Password:"), timeout=self.timeout)
-                writer.write(f"{self.password}\n")
-
-                # 等待登录完成
-                await asyncio.sleep(1)
-            except asyncio.TimeoutError:
-                raise EnspConnectionException("登录超时")
+            # 登录流程
+            await reader.readuntil(b"Username:")
+            writer.write(f"{self.username}\n")
+            await reader.readuntil(b"Password:")
+            writer.write(f"{self.password}\n")
+            await asyncio.sleep(1)
 
             # 执行命令
             output = ""
             for cmd in commands:
                 writer.write(f"{cmd}\n")
-                await writer.drain()  # 确保命令发送完成
-
-                # 读取响应（增加超时处理）
-                try:
-                    while True:
+                await asyncio.sleep(self.ensp_delay)
+                while True:
+                    try:
                         data = await asyncio.wait_for(reader.read(1024), timeout=1)
                         if not data:
                             break
                         output += data
-                except asyncio.TimeoutError:
-                    continue  # 单次读取超时不视为错误
+                    except asyncio.TimeoutError:
+                        break
 
-            # 关闭连接
             writer.close()
-            try:
-                await writer.wait_closed()
-            except:
-                logging.debug("连接关闭时出现异常", exc_info=True)  # 至少记录异常信息
-                pass
-
             return output
         except Exception as e:
             raise EnspConnectionException(f"eNSP连接失败: {str(e)}")
+
+    async def _send_ssh_commands(self, ip: str, commands: List[str]) -> str:
+        """SSH协议执行"""
+        async with self.semaphore:
+            try:
+                if ip not in self._connection_pool:
+                    self._connection_pool[ip] = await asyncssh.connect(
+                        host=ip,
+                        username=self.username,
+                        password=self.password,
+                        connect_timeout=self.timeout,
+                        **self.ssh_options
+                    )
+
+                results = []
+                for cmd in commands:
+                    result = await self._connection_pool[ip].run(cmd)
+                    results.append(result.stdout)
+                return "\n".join(results)
+            except asyncssh.Error as e:
+                if ip in self._connection_pool:
+                    self._connection_pool[ip].close()
+                    del self._connection_pool[ip]
+                raise SSHConnectionException(f"SSH操作失败: {str(e)}")
 
     @staticmethod
     def _generate_ensp_commands(config: SwitchConfig) -> List[str]:
@@ -156,28 +185,6 @@ class SwitchConfigurator:
         commands.append("return")
         return [c for c in commands if c.strip()]
 
-    # --------- SSH模式专用（使用AsyncSSH） ---------
-    async def _send_ssh_commands(self, ip: str, commands: List[str]) -> str:
-        """AsyncSSH执行命令"""
-        async with self.semaphore:
-            try:
-                async with asyncssh.connect(
-                        host=ip,
-                        username=self.username,
-                        password=self.password,
-                        connect_timeout=self.timeout,  # AsyncSSH的正确参数名
-                        **self.ssh_options
-                ) as conn:
-                    results = []
-                    for cmd in commands:
-                        result = await conn.run(cmd, check=True)
-                        results.append(result.stdout)
-                    return "\n".join(results)
-            except asyncssh.Error as e:
-                raise SSHConnectionException(f"SSH操作失败: {str(e)}")
-            except Exception as e:
-                raise SSHConnectionException(f"连接异常: {str(e)}")
-
     @staticmethod
     def _generate_standard_commands(config: SwitchConfig) -> List[str]:
         """生成标准CLI命令"""
@@ -194,16 +201,6 @@ class SwitchConfigurator:
                 f"ip address {config.ip_address}" if config.ip_address else ""
             ])
         return commands
-
-    # --------- 通用功能 ---------
-    async def _validate_config(self, ip: str, config: SwitchConfig) -> bool:
-        """验证配置是否生效"""
-        current = await self._get_current_config(ip)
-        if config.type == "vlan":
-            return f"vlan {config.vlan_id}" in current
-        elif config.type == "interface" and config.vlan:
-            return f"switchport access vlan {config.vlan}" in current
-        return True
 
     async def _get_current_config(self, ip: str) -> str:
         """获取当前配置"""
@@ -270,40 +267,17 @@ class SwitchConfigurator:
                 "restore_success": restore_status
             }
 
+    async def _validate_config(self, ip: str, config: SwitchConfig) -> bool:
+        """验证配置是否生效"""
+        current = await self._get_current_config(ip)
+        if config.type == "vlan":
+            return f"vlan {config.vlan_id}" in current
+        elif config.type == "interface" and config.vlan:
+            return f"switchport access vlan {config.vlan}" in current
+        return True
 
-# ----------------------
-# 使用示例
-# ----------------------
-async def demo():
-    # 示例1: eNSP设备配置（Telnet模式）
-    ensp_configurator = SwitchConfigurator(
-        ensp_mode=True,
-        ensp_port=2000,
-        username="admin",
-        password="admin",
-        timeout=15
-    )
-    ensp_result = await ensp_configurator.safe_apply("127.0.0.1", {
-        "type": "interface",
-        "interface": "GigabitEthernet0/0/1",
-        "vlan": 100,
-        "ip_address": "192.168.1.2 255.255.255.0"
-    })
-    print("eNSP配置结果:", ensp_result)
-
-    # 示例2: 真实设备配置（SSH模式）
-    ssh_configurator = SwitchConfigurator(
-        username="cisco",
-        password="cisco123",
-        timeout=15
-    )
-    ssh_result = await ssh_configurator.safe_apply("192.168.1.1", {
-        "type": "vlan",
-        "vlan_id": 200,
-        "name": "Production"
-    })
-    print("SSH配置结果:", ssh_result)
-
-
-if __name__ == "__main__":
-    asyncio.run(demo())
+    async def close(self):
+        """清理所有连接"""
+        for conn in self._connection_pool.values():
+            conn.close()
+        self._connection_pool.clear()

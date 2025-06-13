@@ -1,11 +1,13 @@
+# 交换机认证配置
+SWITCH_USERNAME=admin
+SWITCH_PASSWORD=your_secure_password
+SWITCH_TIMEOUT=15
+
 # 硅基流动API配置
 SILICONFLOW_API_KEY=sk-114514
 SILICONFLOW_API_URL=https://api.siliconflow.ai/v1
 
-# 交换机登录凭证
-SWITCH_USERNAME=admin
-SWITCH_PASSWORD=your_switch_password
-SWITCH_TIMEOUT=10
-
-# 应用设置
-DEBUG=True
+# FastAPI 配置
+UVICORN_HOST=0.0.0.0
+UVICORN_PORT=8000
+UVICORN_RELOAD=false

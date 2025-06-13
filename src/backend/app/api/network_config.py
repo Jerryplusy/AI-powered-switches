@@ -1,38 +1,45 @@
-import paramiko
 import asyncio
-import aiofiles
-from datetime import datetime
-from typing import Dict, List, Optional, Union
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
-from pydantic import BaseModel
-from paramiko.channel import ChannelFile
 import logging
+import telnetlib3
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, List, Optional, Union
+
+import aiofiles
+import asyncssh
+from pydantic import BaseModel
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 
 # ----------------------
-# 数据模型定义
+# 数据模型
 # ----------------------
 class SwitchConfig(BaseModel):
-    """交换机配置模型"""
     type: str  # vlan/interface/acl/route
     vlan_id: Optional[int] = None
     interface: Optional[str] = None
     name: Optional[str] = None
     ip_address: Optional[str] = None
-    acl_id: Optional[int] = None
-    rules: Optional[List[Dict]] = None
+    vlan: Optional[int] = None  # 兼容eNSP模式
 
 
 # ----------------------
 # 异常类
 # ----------------------
 class SwitchConfigException(Exception):
-    """交换机配置异常基类"""
+    pass
+
+
+class EnspConnectionException(SwitchConfigException):
+    pass
+
+
+class SSHConnectionException(SwitchConfigException):
     pass
 
 
 # ----------------------
-# 核心配置器
+# 核心配置器（完整双模式）
 # ----------------------
 class SwitchConfigurator:
     def __init__(
@@ -41,236 +48,262 @@ class SwitchConfigurator:
             password: str = "admin",
             timeout: int = 10,
             max_workers: int = 5,
-            is_emulated: bool = False,
-            emulated_delay: float = 2.0
+            ensp_mode: bool = False,
+            ensp_port: int = 2000,
+            ensp_command_delay: float = 0.5,
+            **ssh_options
     ):
-
-        """
-        初始化配置器
-
-        :param username: 登录用户名
-        :param password: 登录密码
-        :param timeout: SSH超时时间(秒)
-        :param max_workers: 最大并发数
-        :param is_emulated: 是否模拟器环境
-        :param emulated_delay: 模拟器命令间隔延迟(秒)
-        """
         self.username = username
         self.password = password
         self.timeout = timeout
-        self.is_emulated = is_emulated
-        self.emulated_delay = emulated_delay
         self.semaphore = asyncio.Semaphore(max_workers)
-        self.logger = logging.getLogger(__name__)
+        self.backup_dir = Path("config_backups")
+        self.backup_dir.mkdir(exist_ok=True)
+        self.ensp_mode = ensp_mode
+        self.ensp_port = ensp_port
+        self.ensp_delay = ensp_command_delay
+        self.ssh_options = ssh_options
 
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=4, max=10),
-        retry=retry_if_exception_type(SwitchConfigException)
-    )
-    async def safe_apply(self, ip: str, config: Union[Dict, SwitchConfig]) -> str:
-        """安全执行配置（带重试机制）"""
-        async with self.semaphore:
-            return await self.apply_config(ip, config)
+    async def _apply_config(self, ip: str, config: Union[Dict, SwitchConfig]) -> str:
+        """实际配置逻辑"""
+        if isinstance(config, dict):
+            config = SwitchConfig(**config)
 
-    async def batch_configure(
-            self,
-            config: Union[Dict, SwitchConfig],
-            ips: List[str]
-    ) -> Dict[str, Union[str, Exception]]:
-        """批量配置多台设备"""
-        tasks = [self.safe_apply(ip, config) for ip in ips]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-        return {ip: result for ip, result in zip(ips, results)}
+        commands = (
+            self._generate_ensp_commands(config)
+            if self.ensp_mode
+            else self._generate_standard_commands(config)
+        )
+        return await self._send_commands(ip, commands)
 
-    async def apply_config(
-            self,
-            switch_ip: str,
-            config: Union[Dict, SwitchConfig]
-    ) -> str:
-        """应用配置到单台设备"""
-        try:
-            if isinstance(config, dict):
-                config = SwitchConfig(**config)
-
-            config_type = config.type.lower()
-            if config_type == "vlan":
-                return await self._configure_vlan(switch_ip, config)
-            elif config_type == "interface":
-                return await self._configure_interface(switch_ip, config)
-            elif config_type == "acl":
-                return await self._configure_acl(switch_ip, config)
-            elif config_type == "route":
-                return await self._configure_route(switch_ip, config)
-            else:
-                raise SwitchConfigException(f"不支持的配置类型: {config_type}")
-        except Exception as e:
-            self.logger.error(f"{switch_ip} 配置失败: {str(e)}")
-            raise SwitchConfigException(str(e))
-
-    # ----------------------
-    # 协议实现
-    # ----------------------
     async def _send_commands(self, ip: str, commands: List[str]) -> str:
-        """发送命令到设备（自动适配模拟器）"""
+        """双模式命令发送"""
+        return (
+            await self._send_ensp_commands(ip, commands)
+            if self.ensp_mode
+            else await self._send_ssh_commands(ip, commands)
+        )
+
+    # --------- eNSP模式专用 ---------
+    async def _send_ensp_commands(self, ip: str, commands: List[str]) -> str:
+        """Telnet协议执行（eNSP）"""
         try:
-            # 自动选择凭证
-            username, password = (
-                ("admin", "Admin@123") if self.is_emulated
-                else (self.username, self.password)
+            # 修复点：使用正确的timeout参数
+            reader, writer = await telnetlib3.open_connection(
+                host=ip,
+                port=self.ensp_port,
+                connect_minwait=self.timeout,  # telnetlib3的实际可用参数
+                connect_maxwait=self.timeout
             )
 
-            # 自动调整超时
-            timeout = 15 if self.is_emulated else self.timeout
+            # 登录流程（增加超时处理）
+            try:
+                await asyncio.wait_for(reader.readuntil(b"Username:"), timeout=self.timeout)
+                writer.write(f"{self.username}\n")
 
-            ssh = paramiko.SSHClient()
-            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                await asyncio.wait_for(reader.readuntil(b"Password:"), timeout=self.timeout)
+                writer.write(f"{self.password}\n")
 
-            loop = asyncio.get_event_loop()
-            await loop.run_in_executor(
-                None,
-                lambda: ssh.connect(
-                    ip,
-                    username=username,
-                    password=password,
-                    timeout=timeout,
-                    look_for_keys=False
-                )
-            )
+                # 等待登录完成
+                await asyncio.sleep(1)
+            except asyncio.TimeoutError:
+                raise EnspConnectionException("登录超时")
 
             # 执行命令
-            shell = ssh.invoke_shell()
             output = ""
             for cmd in commands:
-                shell.send(cmd + "\n")
-                if self.is_emulated:
-                    await asyncio.sleep(self.emulated_delay)
-                while shell.recv_ready():
-                    recv = await loop.run_in_executor(None, shell.recv, 1024)
-                    output += recv.decode("gbk" if self.is_emulated else "utf-8")
+                writer.write(f"{cmd}\n")
+                await writer.drain()  # 确保命令发送完成
 
-            ssh.close()
+                # 读取响应（增加超时处理）
+                try:
+                    while True:
+                        data = await asyncio.wait_for(reader.read(1024), timeout=1)
+                        if not data:
+                            break
+                        output += data
+                except asyncio.TimeoutError:
+                    continue  # 单次读取超时不视为错误
+
+            # 关闭连接
+            writer.close()
+            try:
+                await writer.wait_closed()
+            except:
+                logging.debug("连接关闭时出现异常", exc_info=True)  # 至少记录异常信息
+                pass
+
             return output
         except Exception as e:
-            raise SwitchConfigException(f"SSH连接错误: {str(e)}")
+            raise EnspConnectionException(f"eNSP连接失败: {str(e)}")
 
-    async def _configure_vlan(self, ip: str, config: SwitchConfig) -> str:
-        """配置VLAN（自动适配语法）"""
-        commands = [
-            "system-view" if self.is_emulated else "configure terminal",
-            f"vlan {config.vlan_id}",
-            f"name {config.name or ''}"
-        ]
+    @staticmethod
+    def _generate_ensp_commands(config: SwitchConfig) -> List[str]:
+        """生成eNSP命令序列"""
+        commands = ["system-view"]
+        if config.type == "vlan":
+            commands.extend([
+                f"vlan {config.vlan_id}",
+                f"description {config.name or ''}"
+            ])
+        elif config.type == "interface":
+            commands.extend([
+                f"interface {config.interface}",
+                "port link-type access",
+                f"port default vlan {config.vlan}" if config.vlan else "",
+                f"ip address {config.ip_address}" if config.ip_address else ""
+            ])
+        commands.append("return")
+        return [c for c in commands if c.strip()]
 
-        # 端口加入VLAN
-        for intf in getattr(config, "interfaces", []):
-            if self.is_emulated:
-                commands.extend([
-                    f"interface {intf['interface']}",
-                    "port link-type access",
-                    f"port default vlan {config.vlan_id}",
-                    "quit"
-                ])
-            else:
-                commands.extend([
-                    f"interface {intf['interface']}",
-                    f"switchport access vlan {config.vlan_id}",
-                    "exit"
-                ])
+    # --------- SSH模式专用（使用AsyncSSH） ---------
+    async def _send_ssh_commands(self, ip: str, commands: List[str]) -> str:
+        """AsyncSSH执行命令"""
+        async with self.semaphore:
+            try:
+                async with asyncssh.connect(
+                        host=ip,
+                        username=self.username,
+                        password=self.password,
+                        connect_timeout=self.timeout,  # AsyncSSH的正确参数名
+                        **self.ssh_options
+                ) as conn:
+                    results = []
+                    for cmd in commands:
+                        result = await conn.run(cmd, check=True)
+                        results.append(result.stdout)
+                    return "\n".join(results)
+            except asyncssh.Error as e:
+                raise SSHConnectionException(f"SSH操作失败: {str(e)}")
+            except Exception as e:
+                raise SSHConnectionException(f"连接异常: {str(e)}")
 
-        commands.append("return" if self.is_emulated else "end")
-        return await self._send_commands(ip, commands)
+    @staticmethod
+    def _generate_standard_commands(config: SwitchConfig) -> List[str]:
+        """生成标准CLI命令"""
+        commands = []
+        if config.type == "vlan":
+            commands.extend([
+                f"vlan {config.vlan_id}",
+                f"name {config.name or ''}"
+            ])
+        elif config.type == "interface":
+            commands.extend([
+                f"interface {config.interface}",
+                f"switchport access vlan {config.vlan}" if config.vlan else "",
+                f"ip address {config.ip_address}" if config.ip_address else ""
+            ])
+        return commands
 
-    async def _configure_interface(self, ip: str, config: SwitchConfig) -> str:
-        """配置接口"""
-        commands = [
-            "system-view" if self.is_emulated else "configure terminal",
-            f"interface {config.interface}",
-            f"description {config.description or ''}"
-        ]
+    # --------- 通用功能 ---------
+    async def _validate_config(self, ip: str, config: SwitchConfig) -> bool:
+        """验证配置是否生效"""
+        current = await self._get_current_config(ip)
+        if config.type == "vlan":
+            return f"vlan {config.vlan_id}" in current
+        elif config.type == "interface" and config.vlan:
+            return f"switchport access vlan {config.vlan}" in current
+        return True
 
-        if config.ip_address:
-            commands.append(f"ip address {config.ip_address}")
+    async def _get_current_config(self, ip: str) -> str:
+        """获取当前配置"""
+        commands = (
+            ["display current-configuration"]
+            if self.ensp_mode
+            else ["show running-config"]
+        )
+        try:
+            return await self._send_commands(ip, commands)
+        except (EnspConnectionException, SSHConnectionException) as e:
+            raise SwitchConfigException(f"配置获取失败: {str(e)}")
 
-        if hasattr(config, "vlan"):
-            if self.is_emulated:
-                commands.extend([
-                    "port link-type access",
-                    f"port default vlan {config.vlan}"
-                ])
-            else:
-                commands.append(f"switchport access vlan {config.vlan}")
+    async def _backup_config(self, ip: str) -> Path:
+        """备份配置到文件"""
+        backup_path = self.backup_dir / f"{ip}_{datetime.now().isoformat()}.cfg"
+        config = await self._get_current_config(ip)
+        async with aiofiles.open(backup_path, "w") as f:
+            await f.write(config)
+        return backup_path
 
-        state = getattr(config, "state", "up")
-        commands.append("undo shutdown" if state == "up" else "shutdown")
-        commands.append("return" if self.is_emulated else "end")
+    async def _restore_config(self, ip: str, backup_path: Path) -> bool:
+        """从备份恢复配置"""
+        try:
+            async with aiofiles.open(backup_path) as f:
+                config = await f.read()
+            commands = (
+                ["system-view", config, "return"]
+                if self.ensp_mode
+                else [f"configure terminal\n{config}\nend"]
+            )
+            await self._send_commands(ip, commands)
+            return True
+        except Exception as e:
+            logging.error(f"恢复失败: {str(e)}")
+            return False
 
-        return await self._send_commands(ip, commands)
-
-    async def _configure_acl(self, ip: str, config: SwitchConfig) -> str:
-        """配置ACL"""
-        commands = ["system-view" if self.is_emulated else "configure terminal"]
-
-        if self.is_emulated:
-            commands.append(f"acl number {config.acl_id}")
-            for rule in config.rules or []:
-                commands.append(
-                    f"rule {'permit' if rule.get('action') == 'permit' else 'deny'} "
-                    f"{rule.get('source', 'any')} {rule.get('destination', 'any')}"
-                )
-        else:
-            commands.append(f"access-list {config.acl_id} extended")
-            for rule in config.rules or []:
-                commands.append(
-                    f"{rule.get('action', 'permit')} {rule.get('protocol', 'ip')} "
-                    f"{rule.get('source', 'any')} {rule.get('destination', 'any')}"
-                )
-
-        commands.append("return" if self.is_emulated else "end")
-        return await self._send_commands(ip, commands)
-
-    async def _configure_route(self, ip: str, config: SwitchConfig) -> str:
-        """配置路由"""
-        commands = [
-            "system-view" if self.is_emulated else "configure terminal",
-            f"ip route-static {config.network} {config.mask} {config.next_hop}",
-            "return" if self.is_emulated else "end"
-        ]
-        return await self._send_commands(ip, commands)
+    @retry(
+        stop=stop_after_attempt(2),
+        wait=wait_exponential(multiplier=1, min=4, max=10)
+    )
+    async def safe_apply(
+            self,
+            ip: str,
+            config: Union[Dict, SwitchConfig]
+    ) -> Dict[str, Union[str, bool, Path]]:
+        """安全配置应用（自动回滚）"""
+        backup_path = await self._backup_config(ip)
+        try:
+            result = await self._apply_config(ip, config)
+            if not await self._validate_config(ip, config):
+                raise SwitchConfigException("配置验证失败")
+            return {
+                "status": "success",
+                "output": result,
+                "backup_path": str(backup_path)
+            }
+        except (EnspConnectionException, SSHConnectionException, SwitchConfigException) as e:
+            restore_status = await self._restore_config(ip, backup_path)
+            return {
+                "status": "failed",
+                "error": str(e),
+                "backup_path": str(backup_path),
+                "restore_success": restore_status
+            }
 
 
 # ----------------------
 # 使用示例
 # ----------------------
-async def main():
-    # eNSP模拟环境配置
-    ens_configurator = SwitchConfigurator(is_emulated=True)
-    await ens_configurator.batch_configure(
-        {
-            "type": "vlan",
-            "vlan_id": 100,
-            "name": "TestVLAN",
-            "interfaces": [{"interface": "GigabitEthernet0/0/1"}]
-        },
-        ["192.168.1.200"]  # eNSP设备IP
+async def demo():
+    # 示例1: eNSP设备配置（Telnet模式）
+    ensp_configurator = SwitchConfigurator(
+        ensp_mode=True,
+        ensp_port=2000,
+        username="admin",
+        password="admin",
+        timeout=15
     )
+    ensp_result = await ensp_configurator.safe_apply("127.0.0.1", {
+        "type": "interface",
+        "interface": "GigabitEthernet0/0/1",
+        "vlan": 100,
+        "ip_address": "192.168.1.2 255.255.255.0"
+    })
+    print("eNSP配置结果:", ensp_result)
 
-    # 真实设备配置
-    real_configurator = SwitchConfigurator(
-        username="real_admin",
-        password="SecurePass123!",
-        is_emulated=False
+    # 示例2: 真实设备配置（SSH模式）
+    ssh_configurator = SwitchConfigurator(
+        username="cisco",
+        password="cisco123",
+        timeout=15
     )
-    await real_configurator.batch_configure(
-        {
-            "type": "interface",
-            "interface": "Gi1/0/24",
-            "description": "Uplink",
-            "state": "up"
-        },
-        ["10.1.1.1"]  # 真实设备IP
-    )
+    ssh_result = await ssh_configurator.safe_apply("192.168.1.1", {
+        "type": "vlan",
+        "vlan_id": 200,
+        "name": "Production"
+    })
+    print("SSH配置结果:", ssh_result)
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(demo())
